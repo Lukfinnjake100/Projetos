@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Methods</title>
+    <style>
+        .answer-button {
+            width: 3cm;
+            height: 3cm;
+            font-size: 1.5em;
+            margin: 10px;
+        }
+        .answer-button:nth-child(1) { background-color: lightblue; }
+        .answer-button:nth-child(2) { background-color: lightgreen; }
+        .answer-button:nth-child(3) { background-color: lightcoral; }
+        .answer-button:nth-child(4) { background-color: lightgoldenrodyellow; }
+    </style>
+</head>
+<body>
+    <h1>API Methods</h1>
+    <div id="registerContainer">
+        <h2>Register</h2>
+        <form id="registerForm">
+            <label for="registerUsername">Username:</label>
+            <input type="text" id="registerUsername" name="username" required><br><br>
+            <label for="registerPassword">Password:</label>
+            <input type="password" id="registerPassword" name="password" required><br><br>
+            <button type="submit">Register</button>
+        </form>
+        <button onclick="showLogin()">Already have an account? Login</button>
+    </div>
+
+    <div id="loginContainer" style="display:none;">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required><br><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required><br><br>
+            <button type="submit">Login</button>
+        </form>
+        <button onclick="showRegister()">Don't have an account? Register</button>
+    </div>
+
+    <div id="questionContainer" style="display:none;">
+        <h2 id="questionText"></h2>
+        <div id="alternatives"></div>
+        <p>Time left: <span id="timer">20</span> seconds</p>
+    </div>
+
+    <h2>Response</h2>
+    <pre id="response"></pre>
+
+    <h2>Leaderboard</h2>
+    <pre id="leaderboard"></pre>
+
+    <script>
+        let timerInterval;
+        let startTime;
+        let user_id;
+        let user_name;
+
+        function showRegister() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('registerContainer').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('registerContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'block';
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            const response = await fetch('http://127.0.0.1:8000/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: Date.now(), name: username, password: password })
+            });
+
+            const responseData = await response.json();
+            document.getElementById('response').textContent = JSON.stringify(responseData, null, 2);
+            if (responseData.message === "User registered successfully") {
+                showLogin();
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('http://127.0.0.1:8000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: username, password: password })
+            });
+
+            const responseData = await response.json();
+            if (responseData.user_id) {
+                user_id = responseData.user_id;
+                user_name = responseData.name;
+                document.getElementById('loginContainer').style.display = 'none';
+                getQuestion();
+                showLeaderboard();
+            } else {
+                document.getElementById('response').textContent = JSON.stringify(responseData, null, 2);
+            }
+        });
+
+        async function getQuestion() {
+            const response = await fetch(`http://127.0.0.1:8000/random_question?user_id=${user_id}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const question = await response.json();
+            displayQuestion(question);
+        }
+
+        function displayQuestion(question) {
+            document.getElementById('questionText').textContent = question.question_text;
+            const alternativesDiv = document.getElementById('alternatives');
+            alternativesDiv.innerHTML = '';
+            for (const [key, value] of Object.entries(question.alternatives)) {
+                const button = document.createElement('button');
+                button.textContent = value;
+                button.className = 'answer-button';
+                button.onclick = () => submitAnswer(question.question_id, parseInt(key));
+                alternativesDiv.appendChild(button);
+            }
+            document.getElementById('questionContainer').style.display = 'block';
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            let timeLeft = 20;
+            document.getElementById('timer').textContent = timeLeft;
+            startTime = new Date().toISOString();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    setTimeout(getQuestion, 5000);  // Get a new question after 5 seconds
+                    showNextQuestionTimer();
+                }
+            }, 1000);
+        }
+
+        async function submitAnswer(question_id, user_answer) {
+            clearInterval(timerInterval);
+            const started_at = startTime;
+            const finished_at = new Date().toISOString();
+            
+            const response = await fetch('http://127.0.0.1:8000/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: user_id,
+                    question_id: question_id,
+                    user_answer: user_answer,
+                    started_at: started_at,
+                    finished_at: finished_at
+                })
+            });
+            
+            const responseData = await response.json();
+            document.getElementById('response').textContent = JSON.stringify(responseData, null, 2);
+            await showLeaderboard();
+            showNextQuestionTimer();
+        }
+
+        async function showLeaderboard() {
+            const response = await fetch('http://127.0.0.1:8000/leaderboard', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const leaderboard = await response.json();
+            const user = leaderboard.leaderboard.find(u => u.user_id == user_id);
+            let leaderboardText = '';
+            if (user) {
+                leaderboardText += `Your position: ${user.ranking}, Name: ${user_name}, Points: ${user.points}\n`;
+            }
+            leaderboardText += `Top 5 Leaderboard:\n`;
+            leaderboard.leaderboard.forEach((u, index) => {
+                leaderboardText += `${index + 1}. ${u.name} - ${u.points} points\n`;
+            });
+            document.getElementById('leaderboard').textContent = leaderboardText;
+        }
+
+        function showNextQuestionTimer() {
+            let nextQuestionTimeLeft = 5;
+            const nextQuestionTimer = setInterval(() => {
+                document.getElementById('response').textContent += `\nNext question in ${nextQuestionTimeLeft} seconds...`;
+                nextQuestionTimeLeft--;
+                if (nextQuestionTimeLeft < 0) {
+                    clearInterval(nextQuestionTimer);
+                    getQuestion();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
