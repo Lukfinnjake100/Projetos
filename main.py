@@ -33,7 +33,8 @@ class Question(BaseModel):
 class Answer(BaseModel):
     question_id: int
     user_id: int  # Adicionado user_id
-    user_answer: int  # Alternativa escolhida (1 a 4)
+    # Alternativa escolhida (1 a 4), pode ser None para abstenção
+    user_answer: Optional[int]
     started_at: str
     finished_at: str  # Adicionado finished_at
 
@@ -54,6 +55,14 @@ class LoginData(BaseModel):
 @app.post("/register")
 def register_user(user: User):
     user_key = f"user:{user.user_id}"
+
+    # Verificar se o nome de usuário já existe
+    existing_users = r.keys("user:*")
+    for existing_user_key in existing_users:
+        existing_user_data = r.hgetall(existing_user_key)
+        if existing_user_data.get("name") == user.name:
+            raise HTTPException(
+                status_code=400, detail="Username already exists")
 
     if r.exists(user_key):
         raise HTTPException(status_code=400, detail="User already exists")
@@ -181,13 +190,52 @@ def answer_question(answer: Answer):
     # Marcar a questão como respondida pelo usuário
     r.sadd(f"answered:{answer.user_id}", answer.question_id)
 
+    # Registrar a resposta do usuário
+    if answer.user_answer is not None:
+        r.hincrby(
+            f"question_votes:{answer.question_id}", answer.user_answer, 1)
+    else:
+        r.hincrby(f"question_votes:{answer.question_id}", "abstention", 1)
+
+    # Obter votos da questão
+    votes = r.hgetall(f"question_votes:{answer.question_id}")
+    max_votes = max(votes.values())
+    most_voted_alt = [alt for alt,
+                      count in votes.items() if count == max_votes][0]
+
+    # Atualizar contagem de acertos e erros
+    if is_correct:
+        r.hincrby(f"question_stats:{answer.question_id}", "correct", 1)
+    elif answer.user_answer is not None:
+        r.hincrby(f"question_stats:{answer.question_id}", "incorrect", 1)
+    else:
+        r.hincrby(f"question_stats:{answer.question_id}", "abstention", 1)
+
+    # Atualizar resposta mais rápida
+    fastest_user_key = f"fastest_user:{answer.question_id}"
+    fastest_time = r.hget(fastest_user_key, "time")
+    if fastest_time is None or response_time < float(fastest_time):
+        r.hset(fastest_user_key, mapping={
+               "user_id": answer.user_id, "time": response_time})
+
+    fastest_user_data = r.hgetall(fastest_user_key)
+    fastest_user_name = r.hget(
+        f"user:{fastest_user_data.get('user_id')}", "name")
+
+    most_voted_text = question_data.get(f"alt{most_voted_alt}", "Abstention")
+
     return {
         "question_id": answer.question_id,
         "user_answer": answer.user_answer,
         "correct_answer": correct_alt,
         "is_correct": is_correct,
         "response_time_seconds": response_time,
-        "finished_at": finished_at.isoformat()
+        "finished_at": finished_at.isoformat(),
+        "votes": votes,
+        "most_voted_alt": most_voted_alt,
+        "most_voted_text": most_voted_text,
+        "fastest_user_name": fastest_user_name,
+        "fastest_user_response_time": fastest_user_data.get("time")
     }
 
 
@@ -237,6 +285,95 @@ def get_random_question(user_id: int):
             4: question_data.get("alt4"),
         }
     }
+
+
+@app.get("/question_votes/{question_id}")
+def get_question_votes(question_id: int):
+    votes = r.hgetall(f"question_votes:{question_id}")
+    if not votes:
+        raise HTTPException(
+            status_code=404, detail="No votes found for this question")
+
+    max_votes = max(votes.values())
+    most_voted_alt = [alt for alt,
+                      count in votes.items() if count == max_votes][0]
+    question_key = f"question:{question_id}"
+    question_data = r.hgetall(question_key)
+    most_voted_text = question_data.get(f"alt{most_voted_alt}")
+
+    return {
+        "question_id": question_id,
+        "most_voted_alt": most_voted_alt,
+        "most_voted_text": most_voted_text,
+        "votes": votes
+    }
+
+
+@app.get("/question_stats")
+def get_question_stats():
+    question_keys = r.keys("question_stats:*")
+    correct_stats = []
+    incorrect_stats = []
+
+    for key in question_keys:
+        question_id = int(key.split(":")[1])
+        stats = r.hgetall(key)
+        question_data = r.hgetall(f"question:{question_id}")
+        question_text = question_data.get("question_text", "").rstrip("?")
+        correct_stats.append({
+            "question_id": question_id,
+            "question_text": question_text,
+            "correct": int(stats.get("correct", 0))
+        })
+        incorrect_stats.append({
+            "question_id": question_id,
+            "question_text": question_text,
+            "incorrect": int(stats.get("incorrect", 0))
+        })
+
+    correct_stats.sort(key=lambda x: x["correct"], reverse=True)
+    incorrect_stats.sort(key=lambda x: x["incorrect"], reverse=True)
+
+    return {
+        "top_correct": correct_stats[:5],
+        "top_incorrect": incorrect_stats[:5]
+    }
+
+
+@app.get("/user_stats")
+def get_user_stats(user_id: int):
+    correct = 0
+    incorrect = 0
+    abstention = 0
+
+    answered_questions = r.smembers(f"answered:{user_id}")
+    for question_id in answered_questions:
+        stats = r.hgetall(f"question_stats:{question_id}")
+        correct += int(stats.get("correct", 0))
+        incorrect += int(stats.get("incorrect", 0))
+        abstention += int(stats.get("abstention", 0))
+
+    return {
+        "correct": correct,
+        "incorrect": incorrect,
+        "abstention": abstention
+    }
+
+
+@app.get("/fastest_users")
+def get_fastest_users():
+    fastest_users = []
+    question_keys = r.keys("fastest_user:*")
+
+    for key in question_keys:
+        fastest_user_data = r.hgetall(key)
+        user_id = fastest_user_data.get("user_id")
+        time = float(fastest_user_data.get("time"))
+        user_name = r.hget(f"user:{user_id}", "name")
+        fastest_users.append({"name": user_name, "time": time})
+
+    fastest_users.sort(key=lambda x: x["time"])
+    return fastest_users[:5]
 
 
 if __name__ == '__main__':

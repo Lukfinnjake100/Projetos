@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Methods</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+        .answer-button {
+            width: 100px;
+            height: 100px;
+            font-size: 1.5em;
+            margin: 10px;
+        }
+        .answer-button:nth-child(1) { background-color: lightblue; }
+        .answer-button:nth-child(2) { background-color: lightgreen; }
+        .answer-button:nth-child(3) { background-color: lightcoral; }
+        .answer-button:nth-child(4) { background-color: lightgoldenrodyellow; }
+        .ranking-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 300px;
+            padding: 10px;
+            border-left: 1px solid #ccc;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        .question-container, .response-container, .leaderboard-container {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+        .question-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .alternatives {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .score-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .score-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .score-item.correct {
+            background-color: lightgreen;
+        }
+        .score-item.incorrect {
+            background-color: lightcoral;
+        }
+        .score-item.abstention {
+            background-color: lightgoldenrodyellow;
+        }
+        .timer-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin-top: 20px;
+        }
+        .timer-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="score-box">
+        <div class="score-item correct">Acertos: <span id="correct-score">0</span></div>
+        <div class="score-item incorrect">Erros: <span id="incorrect-score">0</span></div>
+        <div class="score-item abstention">Abstenções: <span id="abstention-score">0</span></div>
+    </div>
+    <div class="container">
+        <h1>API Methods</h1>
+        <div id="authContainer">
+            <h2>Register / Login</h2>
+            <form id="authForm">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required><br><br>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required><br><br>
+                <button type="button" onclick="registerUser()">Register</button>
+                <button type="button" onclick="loginUser()">Login</button>
+            </form>
+        </div>
+
+        <div id="questionContainer" class="question-container" style="display:none;">
+            <h2 id="questionText"></h2>
+            <div id="alternatives" class="alternatives"></div>
+            <p>Time left: <span id="timer">20</span> seconds</p>
+        </div>
+
+        <div class="response-container">
+            <h2>Response</h2>
+            <pre id="response"></pre>
+        </div>
+
+        <div class="leaderboard-container">
+            <h2>Leaderboard</h2>
+            <pre id="leaderboard"></pre>
+        </div>
+
+        <div class="ranking-container">
+            <h2>Top 5 Most Correct</h2>
+            <pre id="topCorrect"></pre>
+            <h2>Top 5 Most Incorrect</h2>
+            <pre id="topIncorrect"></pre>
+            <h2>Top 5 Fastest Users</h2>
+            <pre id="topFastest"></pre>
+        </div>
+
+        <div class="timer-container">
+            <canvas id="timerChart"></canvas>
+        </div>
+    </div>
+
+    <script src="scripts.js"></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+{
+	"info": {
+	  "name": "Redis API Collection",
+	  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+	  {
+		"name": "Register User",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Content-Type",
+			  "value": "application/json"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n  \"user_id\": 1,\n  \"name\": \"Alice\",\n  \"password\": \"password123\"\n}"
+		  },
+		  "url": {
+			"raw": "http://127.0.0.1:8000/register",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "register"
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Login User",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Content-Type",
+			  "value": "application/json"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n  \"name\": \"Alice\",\n  \"password\": \"password123\"\n}"
+		  },
+		  "url": {
+			"raw": "http://127.0.0.1:8000/login",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "login"
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Create Question",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Content-Type",
+			  "value": "application/json"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n  \"question_id\": 1,\n  \"question_text\": \"What is the capital of France?\",\n  \"alt1\": \"Paris\",\n  \"alt2\": \"London\",\n  \"alt3\": \"Berlin\",\n  \"alt4\": \"Madrid\",\n  \"correct_alt\": 1\n}"
+		  },
+		  "url": {
+			"raw": "http://127.0.0.1:8000/create_question",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "create_question"
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Get Random Question",
+		"request": {
+		  "method": "GET",
+		  "header": [],
+		  "url": {
+			"raw": "http://127.0.0.1:8000/random_question?user_id=1",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "random_question"
+			],
+			"query": [
+			  {
+				"key": "user_id",
+				"value": "1"
+			  }
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Submit Answer",
+		"request": {
+		  "method": "POST",
+		  "header": [
+			{
+			  "key": "Content-Type",
+			  "value": "application/json"
+			}
+		  ],
+		  "body": {
+			"mode": "raw",
+			"raw": "{\n  \"user_id\": 1,\n  \"question_id\": 1,\n  \"user_answer\": 1,\n  \"started_at\": \"2025-02-10T10:00:00\",\n  \"finished_at\": \"2025-02-10T10:00:10\"\n}"
+		  },
+		  "url": {
+			"raw": "http://127.0.0.1:8000/answer",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "answer"
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Get User Stats",
+		"request": {
+		  "method": "GET",
+		  "header": [],
+		  "url": {
+			"raw": "http://127.0.0.1:8000/user_stats?user_id=1",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "user_stats"
+			],
+			"query": [
+			  {
+				"key": "user_id",
+				"value": "1"
+			  }
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Get Question Stats",
+		"request": {
+		  "method": "GET",
+		  "header": [],
+		  "url": {
+			"raw": "http://127.0.0.1:8000/question_stats",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "question_stats"
+			]
+		  }
+		},
+		"response": []
+	  },
+	  {
+		"name": "Get Fastest Users",
+		"request": {
+		  "method": "GET",
+		  "header": [],
+		  "url": {
+			"raw": "http://127.0.0.1:8000/fastest_users",
+			"protocol": "http",
+			"host": [
+			  "127",
+			  "0",
+			  "0",
+			  "1"
+			],
+			"port": "8000",
+			"path": [
+			  "fastest_users"
+			]
+		  }
+		},
+		"response": []
+	  }
+	]
+  }
